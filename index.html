@@ -150,15 +150,18 @@
 <!-- COVERAGE TAB -->
 <div id="tab-coverage" class="panel">
   <div class="notice">Contact coverage — how many assigned contacts got at least one call. "Called" = actual caller; "Not Called" = assigned rep's contacts that no one worked.</div>
-  <div class="week-selector-row">
-    <label>View week:</label>
-    <select class="filter-select" id="coverageWeekSelector" onchange="renderCoverage()">
-      <option value="overall">Overall (all weeks)</option>
-    </select>
+  <div id="coverage-group-msg" style="display:none;color:var(--muted);padding:32px 0;font-size:14px;"></div>
+  <div id="coverage-ff-content">
+    <div class="week-selector-row">
+      <label>View week:</label>
+      <select class="filter-select" id="coverageWeekSelector" onchange="renderCoverage()">
+        <option value="overall">Overall (all weeks)</option>
+      </select>
+    </div>
+    <div id="coverage-stats-row" class="stats-row"></div>
+    <div class="section-title" id="coverage-table-title">Coverage by Rep</div>
+    <div class="table-wrap"><table id="coverage-table"><thead></thead><tbody></tbody></table></div>
   </div>
-  <div id="coverage-stats-row" class="stats-row"></div>
-  <div class="section-title" id="coverage-table-title">Coverage by Rep</div>
-  <div class="table-wrap"><table id="coverage-table"><thead></thead><tbody></tbody></table></div>
 </div>
 
 <!-- CALL TIMES TAB -->
@@ -699,14 +702,20 @@ function buildBookedRate() {
 
 // ─── Coverage ────────────────────────────────────────────────────
 function buildCoverage() {
+  const msg = document.getElementById('coverage-group-msg');
+  const ffContent = document.getElementById('coverage-ff-content');
+
   if (activeGroup === 'MA') {
-    document.getElementById('coverage-stats-row').innerHTML = '<div style="color:var(--muted);padding:24px">Coverage data is only available for the FF team. Contact lists were gathered for FF reps.</div>';
-    document.querySelector('#coverage-table thead').innerHTML = '';
-    document.querySelector('#coverage-table tbody').innerHTML = '';
+    msg.style.display = '';
+    msg.textContent = 'Coverage data is only available for the FF team — contact lists were gathered for FF reps only.';
+    ffContent.style.display = 'none';
     return;
   }
+
+  msg.style.display = 'none';
+  ffContent.style.display = '';
+
   const sel = document.getElementById('coverageWeekSelector');
-  // Reset options to just "overall" before adding week options
   sel.innerHTML = '<option value="overall">Overall (all weeks)</option>';
   const weeks = Object.keys(COVERAGE_DATA).sort();
   weeks.forEach(wk => {
@@ -716,7 +725,7 @@ function buildCoverage() {
     sel.appendChild(opt);
   });
   if (!weeks.length) {
-    document.getElementById('coverage-stats-row').innerHTML = '<div style="color:var(--muted);padding:24px">No coverage data loaded. Upload contact lists to enable this tab.</div>';
+    document.getElementById('coverage-stats-row').innerHTML = '<div style="color:var(--muted);padding:24px">No coverage data loaded.</div>';
     return;
   }
   renderCoverage();
