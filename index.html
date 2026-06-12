@@ -94,9 +94,9 @@
     <h1>📞 Outreach Call Hygiene</h1>
   </div>
   <div class="group-toggle">
-    <button class="group-btn active" data-group="ICP" onclick="setGroup('ICP')">ICP</button>
+    <button class="group-btn active" data-group="All" onclick="setGroup('All')">All</button>
+    <button class="group-btn" data-group="ICP" onclick="setGroup('ICP')">ICP</button>
     <button class="group-btn" data-group="MA" onclick="setGroup('MA')">MA</button>
-    <button class="group-btn" data-group="All" onclick="setGroup('All')">All</button>
   </div>
   <div class="meta">Latest: Week of Jun 8 &nbsp;|&nbsp; All-time calls: 15,571 &nbsp;|&nbsp; Weeks tracked: 14</div>
 </div>
@@ -225,7 +225,7 @@ const ALL_WEEKS = ["2026-W11", "2026-W12", "2026-W13", "2026-W14", "2026-W15", "
 const LATEST_WEEK = "2026-W24";
 
 // ─── Group selection ─────────────────────────────────────────────
-let activeGroup = 'ICP';
+let activeGroup = 'All';
 let currentCrossStats = [];
 let currentRetireStats = [];
 let filteredNumsForGroup = [];
@@ -570,8 +570,8 @@ function buildWeekSelector() {
   ALL_WEEKS.slice().reverse().forEach(wk => {
     const opt = document.createElement('option');
     opt.value = wk;
-    // Use ICP week data for labels (human label is the same regardless of group)
-    const d = GROUP_DATA.ICP.week_data[wk];
+    // Use All week data for labels (human label is the same regardless of group)
+    const d = GROUP_DATA.All.week_data[wk];
     opt.textContent = d ? d.human + (wk !== 'prior' ? ' (' + wk + ')' : '') : wk;
     if (wk === LATEST_WEEK) opt.selected = true;
     sel.appendChild(opt);
