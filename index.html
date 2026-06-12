@@ -752,12 +752,16 @@ function renderCoverage() {
   let totalContacts = 0, totalCalled = 0;
   let titleLabel = '';
 
+  // Only show reps who belong to the active group (avoids cross-group callers bleeding in)
+  const grpReps = activeGroup === 'All' ? null : activeGroupReps();
+  const inGroup = r => !grpReps || grpReps.has(r.rep);
+
   if (wk === 'overall') {
     titleLabel = 'All Weeks — Overall';
     Object.values(groupCov).forEach(d => {
       totalContacts += d.total;
       totalCalled += d.total_called;
-      (d.reps || []).forEach(r => {
+      (d.reps || []).filter(inGroup).forEach(r => {
         if (!reps[r.rep]) reps[r.rep] = {called: 0, not_called: 0};
         reps[r.rep].called += r.called;
         reps[r.rep].not_called += r.not_called;
@@ -769,7 +773,7 @@ function renderCoverage() {
     titleLabel = d.human;
     totalContacts = d.total;
     totalCalled = d.total_called;
-    (d.reps || []).forEach(r => {
+    (d.reps || []).filter(inGroup).forEach(r => {
       reps[r.rep] = {called: r.called, not_called: r.not_called};
     });
   }
