@@ -201,6 +201,9 @@
   <div class="section-title" style="margin-top:28px">By Prospect <small style="color:var(--muted);font-size:12px">(sorted by total confirmation calls)</small></div>
   <div class="search-row">
     <input class="search-box" id="conf-prospect-search" placeholder="Search name or company..." oninput="filterConfirmationProspects()" />
+    <select class="filter-select" id="conf-prospect-rep" onchange="filterConfirmationProspects()">
+      <option value="">All Reps</option>
+    </select>
   </div>
   <div class="table-wrap"><table id="conf-prospect-table"><thead></thead><tbody></tbody></table></div>
 </div>
@@ -1053,7 +1056,18 @@ function renderConfirmationWeek() {
     }).join('') || '<tr><td colspan="4" class="empty">No weekly data</td></tr>';
   }
 
-  // By Prospect table
+  // By Prospect table — populate rep filter from current data
+  const allProsReps = [...new Set(proData.flatMap(p => p.reps || []))].sort();
+  const repSel = document.getElementById('conf-prospect-rep');
+  const prevRep = repSel.value;
+  repSel.innerHTML = '<option value="">All Reps</option>';
+  allProsReps.forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r; opt.textContent = r;
+    if (r === prevRep) opt.selected = true;
+    repSel.appendChild(opt);
+  });
+
   window._confProspects = proData;
   window._confProspectIsWeekly = !isAll;
   filterConfirmationProspects();
@@ -1083,9 +1097,11 @@ function renderConfirmationProspects(rows) {
 }
 
 function filterConfirmationProspects() {
-  const q = (document.getElementById('conf-prospect-search').value || '').toLowerCase();
+  const q   = (document.getElementById('conf-prospect-search').value || '').toLowerCase();
+  const rep = document.getElementById('conf-prospect-rep').value;
   const rows = (window._confProspects || []).filter(p =>
-    (p.name||'').toLowerCase().includes(q) || (p.company||'').toLowerCase().includes(q)
+    ((p.name||'').toLowerCase().includes(q) || (p.company||'').toLowerCase().includes(q)) &&
+    (!rep || (p.reps||[]).includes(rep))
   );
   renderConfirmationProspects(rows);
 }
