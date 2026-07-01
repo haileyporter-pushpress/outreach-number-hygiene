@@ -999,6 +999,12 @@ function renderCoverage() {
 // ─── Confirmation Calls ───────────────────────────────────────────
 function activeConfirmationData() { return GROUP_DATA[activeGroup].confirmation || {}; }
 
+function fmtSecs(s) {
+  if (!s && s !== 0) return '—';
+  const m = Math.floor(s / 60), sec = Math.round(s % 60);
+  return m + ':' + String(sec).padStart(2, '0');
+}
+
 function buildBookingDuration() {
   const d = (GROUP_DATA[activeGroup].booking_duration || {});
   const byWeek = d.by_week || [];
