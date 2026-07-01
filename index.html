@@ -1103,28 +1103,6 @@ function buildConfirmationCalls() {
   renderConfirmationWeek();
 }
 
-  // Populate week dropdown (preserve selection across group changes)
-  const prevWk = sel.value;
-  sel.innerHTML = '<option value="all">All Weeks</option>';
-  (d.by_week || []).slice().reverse().forEach(w => {
-    const opt = document.createElement('option');
-    opt.value = w.week; opt.textContent = w.human;
-    if (w.week === prevWk) opt.selected = true;
-    sel.appendChild(opt);
-  });
-
-  if (!d || !d.total) {
-    document.getElementById('conf-stats-row').innerHTML = '<div style="color:var(--muted);padding:24px">No confirmation call data.</div>';
-    ['#conf-rep-table','#conf-week-table','#conf-prospect-table'].forEach(id => {
-      document.querySelector(id + ' thead').innerHTML = '';
-      document.querySelector(id + ' tbody').innerHTML = '';
-    });
-    return;
-  }
-
-  renderConfirmationWeek();
-}
-
 function renderConfirmationWeek() {
   const d = activeConfirmationData();
   if (!d || !d.total) return;
