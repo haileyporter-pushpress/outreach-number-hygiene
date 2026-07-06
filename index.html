@@ -717,16 +717,16 @@ function renderVmInbound() {
       const inbTotal = inbObj.total || 0;
       const inbConn = inbObj.connected || 0;
       const out = wkRepOutbound[rep] || 0;
-      const vmPct = out > 0 ? (vms / out * 100).toFixed(1) + '%' : '—';
-      const inbRate = inbTotal > 0 ? (inbConn / inbTotal * 100).toFixed(1) + '%' : '—';
+      const vmPctNum = out > 0 ? parseFloat((vms / out * 100).toFixed(1)) : null;
+      const inbRateNum = inbTotal > 0 ? parseFloat((inbConn / inbTotal * 100).toFixed(1)) : null;
       return `<tr>
         <td><strong>${rep}</strong></td>
         <td>${out}</td>
         <td>${vms}</td>
-        <td>${vmPct}</td>
+        <td>${vmPctNum !== null ? barHtml(vmPctNum, 30) : '—'}</td>
         <td>${inbTotal}</td>
         <td>${inbConn}</td>
-        <td>${inbRate}</td>
+        <td>${inbRateNum !== null ? barHtml(inbRateNum) : '—'}</td>
       </tr>`;
     }).join('') : '<tr><td colspan="7" class="empty">No data for this week</td></tr>';
   }
