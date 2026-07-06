@@ -679,7 +679,7 @@ function renderVmInbound() {
         <td>${r.inbound > 0 ? barHtml(r.inbound_rate) : '—'}</td>
       </tr>`).join('') : '<tr><td colspan="7" class="empty">No data</td></tr>';
 
-    // Weekly trend — per-rep VM columns + Total VMs + VM% + Inbound + Inbound Connect %
+    // Weekly trend — per-rep VM cols + per-rep Inbound% cols + Totals
     document.getElementById('vm-weekly-section').style.display = '';
     const vmWeekly = d.vm_weekly || [];
     const inbWeekly = d.inbound_weekly || [];
@@ -687,16 +687,20 @@ function renderVmInbound() {
     inbWeekly.forEach(w => { inbByWk[w.week] = w; });
     const trendWeeks = [...new Set([...vmWeekly.map(w=>w.week), ...inbWeekly.map(w=>w.week)])].sort();
     const vmRepCols = [...new Set(vmWeekly.flatMap(w => Object.keys(w.reps || {})))].sort();
+    const inbRepCols = [...new Set(inbWeekly.flatMap(w => Object.keys(w.reps || {})))].sort();
     const wd = activeWeekData();
     document.querySelector('#vm-weekly-table thead').innerHTML = trendWeeks.length ? `<tr>
       <th>Week</th>
       ${vmRepCols.map(r => `<th>${r} VMs</th>`).join('')}
-      <th>Total VMs</th><th>VM %</th><th>Inbound</th><th>Inbound %</th>
+      <th>Total VMs</th><th>VM %</th>
+      ${inbRepCols.map(r => `<th>${r} Inb%</th>`).join('')}
+      <th>Total Inb</th><th>Inbound %</th>
     </tr>` : '';
     document.querySelector('#vm-weekly-table tbody').innerHTML = trendWeeks.map(week => {
       const vmW = vmWeekly.find(w => w.week === week) || {};
       const ibW = inbByWk[week] || {};
       const vmRepsData = vmW.reps || {};
+      const ibRepsData = ibW.reps || {};
       const vmTotal = vmW.total || 0;
       const wkRepStats = (wd[week] || {}).rep_stats || [];
       const outboundTotal = wkRepStats.reduce((s,r) => s + (r.total || 0), 0);
@@ -710,6 +714,12 @@ function renderVmInbound() {
         ${vmRepCols.map(r => `<td>${vmRepsData[r] || 0}</td>`).join('')}
         <td><strong>${vmTotal}</strong></td>
         <td>${vmPct}</td>
+        ${inbRepCols.map(r => {
+          const repInb = ibRepsData[r] || {};
+          const rt = repInb.total || 0;
+          const rc = repInb.connected || 0;
+          return `<td>${rt > 0 ? (rc/rt*100).toFixed(1)+'%' : '—'}</td>`;
+        }).join('')}
         <td>${ibTotal}</td>
         <td>${ibPct}</td>
       </tr>`;
