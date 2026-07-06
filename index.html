@@ -171,16 +171,26 @@
 <!-- VM & INBOUND TAB -->
 <div id="tab-vm-inbound" class="panel">
   <div class="notice">Voicemails = outbound "Left Voicemail" dispositions. Inbound = calls where direction is inbound.</div>
-  <div class="section-title">Voicemails Left</div>
+  <div class="week-selector-row">
+    <label>View week:</label>
+    <select class="filter-select" id="vmWeekSelector" onchange="renderVmInbound()">
+      <option value="all">All Weeks</option>
+    </select>
+  </div>
+  <div class="section-title" id="vm-section-title">Voicemails Left</div>
   <div class="stats-row" id="vm-stats-row"></div>
   <div class="table-wrap"><table id="vm-table"><thead></thead><tbody></tbody></table></div>
-  <div class="section-title" style="margin-top:28px">Weekly VM Trend</div>
-  <div class="table-wrap"><table id="vm-weekly-table"><thead></thead><tbody></tbody></table></div>
-  <div class="section-title" style="margin-top:28px">Inbound Calls</div>
+  <div id="vm-weekly-section">
+    <div class="section-title" style="margin-top:28px">Weekly VM Trend</div>
+    <div class="table-wrap"><table id="vm-weekly-table"><thead></thead><tbody></tbody></table></div>
+  </div>
+  <div class="section-title" style="margin-top:28px" id="inbound-section-title">Inbound Calls</div>
   <div class="stats-row" id="inbound-stats-row"></div>
   <div class="table-wrap"><table id="inbound-table"><thead></thead><tbody></tbody></table></div>
-  <div class="section-title" style="margin-top:28px">Weekly Inbound Trend</div>
-  <div class="table-wrap"><table id="inbound-weekly-table"><thead></thead><tbody></tbody></table></div>
+  <div id="inbound-weekly-section">
+    <div class="section-title" style="margin-top:28px">Weekly Inbound Trend</div>
+    <div class="table-wrap"><table id="inbound-weekly-table"><thead></thead><tbody></tbody></table></div>
+  </div>
 </div>
 
 <!-- CONFIRMATION CALLS TAB -->
@@ -604,72 +614,135 @@ function buildVmInbound() {
     return;
   }
 
-  const totalVm = d.total_vm || 0;
-  const totalInbound = d.total_inbound || 0;
-  const totalInboundConn = d.total_inbound_connected || 0;
-  const inboundConnRate = totalInbound > 0 ? (totalInboundConn / totalInbound * 100).toFixed(1) : 0;
+  // Populate week selector (union of vm and inbound weeks, newest first)
+  const sel = document.getElementById('vmWeekSelector');
+  const prevVal = sel.value;
+  sel.innerHTML = '<option value="all">All Weeks</option>';
+  const allVmWeeks = (d.vm_weekly || []).map(w => w.week);
+  const allInbWeeks = (d.inbound_weekly || []).map(w => w.week);
+  const allWkSet = [...new Set([...allVmWeeks, ...allInbWeeks])].sort().reverse();
+  allWkSet.forEach(wk => {
+    const entry = (d.vm_weekly || []).find(w => w.week === wk) || (d.inbound_weekly || []).find(w => w.week === wk);
+    const opt = document.createElement('option');
+    opt.value = wk;
+    opt.textContent = (entry ? entry.human : wk) + ' (' + wk + ')';
+    sel.appendChild(opt);
+  });
+  if (prevVal && [...sel.options].some(o => o.value === prevVal)) sel.value = prevVal;
 
-  // VM stat cards
-  document.getElementById('vm-stats-row').innerHTML = `
-    <div class="stat-card"><div class="label">Total VMs Left</div><div class="value">${totalVm.toLocaleString()}</div></div>`;
+  renderVmInbound();
+}
 
-  // VM by rep table
+function renderVmInbound() {
+  const d = activeVmInbound();
+  if (!d) return;
+  const wk = document.getElementById('vmWeekSelector').value;
   const vmReps = d.vm_rows || [];
-  document.querySelector('#vm-table thead').innerHTML = `<tr>
-    <th>Rep</th><th>VMs Left</th><th>Outbound Calls</th><th>VM Rate</th>
-  </tr>`;
-  document.querySelector('#vm-table tbody').innerHTML = vmReps.length ? vmReps.map(r => `
-    <tr>
-      <td><strong>${r.rep}</strong></td>
-      <td>${r.vms.toLocaleString()}</td>
-      <td>${r.outbound.toLocaleString()}</td>
-      <td>${barHtml(r.vm_rate, 30)}</td>
-    </tr>`).join('') : '<tr><td colspan="4" class="empty">No data</td></tr>';
-
-  // Weekly VM trend
-  const vmWeekly = d.vm_weekly || [];
   const vmRepsAll = vmReps.map(r => r.rep);
-  document.querySelector('#vm-weekly-table thead').innerHTML = vmWeekly.length ? `<tr>
-    <th>Week</th>${vmRepsAll.map(r => `<th>${r}</th>`).join('')}<th>Total</th>
-  </tr>` : '';
-  document.querySelector('#vm-weekly-table tbody').innerHTML = vmWeekly.map(w => `
-    <tr>
-      <td>${w.human} (${w.week})</td>
-      ${vmRepsAll.map(r => `<td>${w.reps[r] || 0}</td>`).join('')}
-      <td><strong>${w.total}</strong></td>
-    </tr>`).join('');
-
-  // Inbound stat cards
-  document.getElementById('inbound-stats-row').innerHTML = `
-    <div class="stat-card"><div class="label">Total Inbound</div><div class="value">${totalInbound.toLocaleString()}</div></div>
-    <div class="stat-card"><div class="label">Connected</div><div class="value" style="color:var(--green)">${totalInboundConn.toLocaleString()}</div></div>
-    <div class="stat-card"><div class="label">Connect Rate</div><div class="value">${inboundConnRate}%</div></div>`;
-
-  // Inbound by rep table
   const inboundReps = d.inbound_rows || [];
-  document.querySelector('#inbound-table thead').innerHTML = `<tr>
-    <th>Rep</th><th>Inbound Calls</th><th>Connected</th><th>Connect Rate</th>
-  </tr>`;
-  document.querySelector('#inbound-table tbody').innerHTML = inboundReps.length ? inboundReps.map(r => `
-    <tr>
-      <td><strong>${r.rep}</strong></td>
-      <td>${r.total.toLocaleString()}</td>
-      <td>${r.connected}</td>
-      <td>${barHtml(r.connect_rate)}</td>
-    </tr>`).join('') : '<tr><td colspan="4" class="empty">No inbound data</td></tr>';
-
-  // Weekly inbound trend
-  const inboundWeekly = d.inbound_weekly || [];
   const inboundRepsAll = inboundReps.map(r => r.rep);
-  document.querySelector('#inbound-weekly-table thead').innerHTML = inboundWeekly.length ? `<tr>
-    <th>Week</th>${inboundRepsAll.map(r => `<th>${r}</th>`).join('')}<th>Total</th>
-  </tr>` : '';
-  document.querySelector('#inbound-weekly-table tbody').innerHTML = inboundWeekly.map(w => `
-    <tr>
-      <td>${w.human} (${w.week})</td>
-      ${inboundRepsAll.map(r => `<td>${w.reps[r] || 0}</td>`).join('')}
-      <td><strong>${w.total}</strong></td>
-    </tr>`).join('');
+
+  if (wk === 'all') {
+    // ── All-time view ─────────────────────────────────────────────
+    const totalVm = d.total_vm || 0;
+    const totalInbound = d.total_inbound || 0;
+    const totalInboundConn = d.total_inbound_connected || 0;
+    const inboundConnRate = totalInbound > 0 ? (totalInboundConn / totalInbound * 100).toFixed(1) : 0;
+
+    document.getElementById('vm-section-title').textContent = 'Voicemails Left (All Time)';
+    document.getElementById('vm-stats-row').innerHTML = `
+      <div class="stat-card"><div class="label">Total VMs Left</div><div class="value">${totalVm.toLocaleString()}</div></div>`;
+    document.querySelector('#vm-table thead').innerHTML = `<tr>
+      <th>Rep</th><th>VMs Left</th><th>Outbound Calls</th><th>VM Rate</th>
+    </tr>`;
+    document.querySelector('#vm-table tbody').innerHTML = vmReps.length ? vmReps.map(r => `
+      <tr>
+        <td><strong>${r.rep}</strong></td>
+        <td>${r.vms.toLocaleString()}</td>
+        <td>${r.outbound.toLocaleString()}</td>
+        <td>${barHtml(r.vm_rate, 30)}</td>
+      </tr>`).join('') : '<tr><td colspan="4" class="empty">No data</td></tr>';
+
+    document.getElementById('vm-weekly-section').style.display = '';
+    const vmWeekly = d.vm_weekly || [];
+    document.querySelector('#vm-weekly-table thead').innerHTML = vmWeekly.length ? `<tr>
+      <th>Week</th>${vmRepsAll.map(r => `<th>${r}</th>`).join('')}<th>Total</th>
+    </tr>` : '';
+    document.querySelector('#vm-weekly-table tbody').innerHTML = vmWeekly.map(w => `
+      <tr>
+        <td>${w.human} (${w.week})</td>
+        ${vmRepsAll.map(r => `<td>${w.reps[r] || 0}</td>`).join('')}
+        <td><strong>${w.total}</strong></td>
+      </tr>`).join('');
+
+    document.getElementById('inbound-section-title').textContent = 'Inbound Calls (All Time)';
+    document.getElementById('inbound-stats-row').innerHTML = `
+      <div class="stat-card"><div class="label">Total Inbound</div><div class="value">${totalInbound.toLocaleString()}</div></div>
+      <div class="stat-card"><div class="label">Connected</div><div class="value" style="color:var(--green)">${totalInboundConn.toLocaleString()}</div></div>
+      <div class="stat-card"><div class="label">Connect Rate</div><div class="value">${inboundConnRate}%</div></div>`;
+    document.querySelector('#inbound-table thead').innerHTML = `<tr>
+      <th>Rep</th><th>Inbound Calls</th><th>Connected</th><th>Connect Rate</th>
+    </tr>`;
+    document.querySelector('#inbound-table tbody').innerHTML = inboundReps.length ? inboundReps.map(r => `
+      <tr>
+        <td><strong>${r.rep}</strong></td>
+        <td>${r.total.toLocaleString()}</td>
+        <td>${r.connected}</td>
+        <td>${barHtml(r.connect_rate)}</td>
+      </tr>`).join('') : '<tr><td colspan="4" class="empty">No inbound data</td></tr>';
+
+    document.getElementById('inbound-weekly-section').style.display = '';
+    const inboundWeekly = d.inbound_weekly || [];
+    document.querySelector('#inbound-weekly-table thead').innerHTML = inboundWeekly.length ? `<tr>
+      <th>Week</th>${inboundRepsAll.map(r => `<th>${r}</th>`).join('')}<th>Total</th>
+    </tr>` : '';
+    document.querySelector('#inbound-weekly-table tbody').innerHTML = inboundWeekly.map(w => `
+      <tr>
+        <td>${w.human} (${w.week})</td>
+        ${inboundRepsAll.map(r => `<td>${w.reps[r] || 0}</td>`).join('')}
+        <td><strong>${w.total}</strong></td>
+      </tr>`).join('');
+
+  } else {
+    // ── Week-specific view ────────────────────────────────────────
+    const vmW   = (d.vm_weekly || []).find(w => w.week === wk);
+    const inbW  = (d.inbound_weekly || []).find(w => w.week === wk);
+    const humanLabel = (vmW || inbW || {}).human || wk;
+
+    // VM this week
+    document.getElementById('vm-section-title').textContent = `Voicemails Left — ${humanLabel}`;
+    const wkVmTotal = vmW ? vmW.total : 0;
+    document.getElementById('vm-stats-row').innerHTML = `
+      <div class="stat-card"><div class="label">VMs Left</div><div class="value">${wkVmTotal}</div></div>`;
+    if (vmW) {
+      const wkVmReps = Object.entries(vmW.reps).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
+      document.querySelector('#vm-table thead').innerHTML = `<tr><th>Rep</th><th>VMs Left</th></tr>`;
+      document.querySelector('#vm-table tbody').innerHTML = wkVmReps.length
+        ? wkVmReps.map(([rep, count]) => `<tr><td><strong>${rep}</strong></td><td>${count}</td></tr>`).join('')
+        : '<tr><td colspan="2" class="empty">No VMs this week</td></tr>';
+    } else {
+      document.querySelector('#vm-table thead').innerHTML = '';
+      document.querySelector('#vm-table tbody').innerHTML = '<tr><td colspan="2" class="empty">No VM data for this week</td></tr>';
+    }
+    document.getElementById('vm-weekly-section').style.display = 'none';
+
+    // Inbound this week
+    document.getElementById('inbound-section-title').textContent = `Inbound Calls — ${humanLabel}`;
+    const wkInbTotal = inbW ? inbW.total : 0;
+    document.getElementById('inbound-stats-row').innerHTML = `
+      <div class="stat-card"><div class="label">Inbound Calls</div><div class="value">${wkInbTotal}</div></div>`;
+    if (inbW) {
+      const wkInbReps = Object.entries(inbW.reps).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
+      document.querySelector('#inbound-table thead').innerHTML = `<tr><th>Rep</th><th>Inbound Calls</th></tr>`;
+      document.querySelector('#inbound-table tbody').innerHTML = wkInbReps.length
+        ? wkInbReps.map(([rep, count]) => `<tr><td><strong>${rep}</strong></td><td>${count}</td></tr>`).join('')
+        : '<tr><td colspan="2" class="empty">No inbound calls this week</td></tr>';
+    } else {
+      document.querySelector('#inbound-table thead').innerHTML = '';
+      document.querySelector('#inbound-table tbody').innerHTML = '<tr><td colspan="2" class="empty">No inbound data for this week</td></tr>';
+    }
+    document.getElementById('inbound-weekly-section').style.display = 'none';
+  }
 }
 
 // ─── Number Detail ────────────────────────────────────────────────
