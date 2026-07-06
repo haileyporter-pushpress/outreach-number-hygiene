@@ -757,10 +757,10 @@ function renderVmInbound() {
       const vmTotal = vmW2.total || 0;
       const wkRepStats2 = (wd2[week] || {}).rep_stats || [];
       const outboundTotal = wkRepStats2.reduce((s,r) => s + (r.total || 0), 0);
-      const vmPctVal = outboundTotal > 0 ? (vmTotal / outboundTotal * 100) : null;
+      const vmPctVal = outboundTotal > 0 ? parseFloat((vmTotal / outboundTotal * 100).toFixed(1)) : null;
       const ibTotal = ibW2.total || 0;
       const ibConn = ibW2.total_connected || 0;
-      const ibPctVal = ibTotal > 0 ? (ibConn / ibTotal * 100) : null;
+      const ibPctVal = ibTotal > 0 ? parseFloat((ibConn / ibTotal * 100).toFixed(1)) : null;
       const humanLbl = vmW2.human || ibW2.human || week;
       return `<tr>
         <td>${humanLbl} (${week})</td>
@@ -771,7 +771,7 @@ function renderVmInbound() {
           const repInb = ibRepsData[r] || {};
           const rt = repInb.total || 0;
           const rc = repInb.connected || 0;
-          const pct = rt > 0 ? (rc/rt*100) : null;
+          const pct = rt > 0 ? parseFloat((rc/rt*100).toFixed(1)) : null;
           return `<td>${pct !== null ? barHtml(pct) : '—'}</td>`;
         }).join('')}
         <td>${ibTotal}</td>
