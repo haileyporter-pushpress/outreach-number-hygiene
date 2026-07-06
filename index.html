@@ -104,10 +104,10 @@
 <div class="tabs">
   <div class="tab active" onclick="showTab('this-week', this)">📅 This Week</div>
   <div class="tab" onclick="showTab('team-overview', this)">👥 Team Overview</div>
-  <div class="tab" onclick="showTab('confirmation-calls', this)">✅ Confirmation Calls</div>
   <div class="tab" onclick="showTab('booked-rate', this)">📈 Booked Rate</div>
   <div class="tab" onclick="showTab('coverage', this)">📋 Coverage</div>
   <div class="tab" onclick="showTab('vm-inbound', this)">📞 VM & Inbound</div>
+  <div class="tab" onclick="showTab('confirmation-calls', this)">✅ Confirmation Calls</div>
   <div class="tab" onclick="showTab('booking-duration', this)">⏱️ Booking Call Length</div>
   <div class="tab" onclick="showTab('call-times', this)">🕐 Call Times</div>
   <div class="tab" onclick="showTab('number-detail', this)">🔢 Number Detail</div>
@@ -224,18 +224,6 @@
   </div>
   <div class="table-wrap"><table id="conf-prospect-table"><thead></thead><tbody></tbody></table></div>
 
-  <!-- CONFIRMATION TEXTS SECTION (separate, below calls) -->
-  <div style="margin-top:40px;padding-top:24px;border-top:2px solid var(--border)">
-    <div class="section-title" style="margin-bottom:4px">&#x1F4F1; Confirmation Texts</div>
-    <div class="notice" style="margin-bottom:16px">Texts sent to confirm upcoming demos. Tracked separately from phone calls. Dispositions: "Confirmation Text - Answered" / "Confirmation Text - No Answer".</div>
-    <div class="stats-row" id="conf-text-stats-row"></div>
-    <div class="section-title" style="margin-top:24px">By Rep</div>
-    <div class="table-wrap"><table id="conf-text-rep-table"><thead></thead><tbody></tbody></table></div>
-    <div class="section-title" style="margin-top:24px">By Week</div>
-    <div class="table-wrap"><table id="conf-text-week-table"><thead></thead><tbody></tbody></table></div>
-    <div class="section-title" style="margin-top:24px">By Prospect</div>
-    <div class="table-wrap"><table id="conf-text-prospect-table"><thead></thead><tbody></tbody></table></div>
-  </div>
 </div>
 
 
@@ -1271,12 +1259,25 @@ function renderConfirmationWeek() {
   const repData   = isAll ? (d.by_rep || []) : (entry.by_rep || []);
   const proData   = isAll ? (byMonth ? [] : (d.by_prospect || [])) : (entry.by_prospect || []);
 
+  // Text stats — pull matching week or all-time
+  const txtAll = (d.texts || {});
+  const txtWkEntry = isAll ? null : (txtAll.by_week || []).find(w => w.week === selVal);
+  const txtData = isAll ? txtAll : (txtWkEntry || {});
+  const txtTotal = txtData.total || 0;
+  const txtAns = txtData.answered || 0;
+  const txtRate = txtData.connect_rate || (txtTotal > 0 ? parseFloat((txtAns/txtTotal*100).toFixed(1)) : 0);
+  const txtRepMap = {};
+  (isAll ? (txtAll.by_rep || []) : ((txtWkEntry || {}).by_rep || txtAll.by_rep || [])).forEach(r => { txtRepMap[r.rep] = r; });
+
   const crColor = statsData.connect_rate >= 60 ? 'var(--green)' : statsData.connect_rate >= 40 ? 'var(--yellow)' : 'var(--red)';
+  const txtCrColor = txtRate >= 60 ? 'var(--green)' : txtRate >= 40 ? 'var(--yellow)' : 'var(--red)';
   document.getElementById('conf-stats-row').innerHTML = `
-    <div class="stat-card"><div class="label">Total Conf Calls</div><div class="value">${statsData.total.toLocaleString()}</div></div>
-    <div class="stat-card"><div class="label">Answered</div><div class="value" style="color:var(--green)">${statsData.answered}</div></div>
-    <div class="stat-card"><div class="label">Not Answered</div><div class="value" style="color:var(--red)">${statsData.not_answered}</div></div>
-    <div class="stat-card"><div class="label">Connect Rate</div><div class="value" style="color:${crColor}">${statsData.connect_rate}%</div></div>`;
+    <div class="stat-card"><div class="label">Conf Calls</div><div class="value">${statsData.total.toLocaleString()}</div><div class="sub">${statsData.answered} answered</div></div>
+    <div class="stat-card"><div class="label">Call Connect Rate</div><div class="value" style="color:${crColor}">${statsData.connect_rate}%</div></div>
+    ${txtTotal > 0 ? `
+    <div class="stat-card" style="border-left:3px solid var(--accent)"><div class="label">📱 Conf Texts</div><div class="value">${txtTotal.toLocaleString()}</div><div class="sub">${txtAns} answered</div></div>
+    <div class="stat-card" style="border-left:3px solid var(--accent)"><div class="label">Text Response Rate</div><div class="value" style="color:${txtCrColor}">${txtRate}%</div></div>` : ''}
+    <div class="stat-card"><div class="label">Not Answered (calls)</div><div class="value" style="color:var(--red)">${statsData.not_answered}</div></div>`;
 
   const src2 = isAll ? (d.show_rate_comparison || {}) : (entry ? (entry.show_rate_comparison || {}) : {});
   function showRateCard(label, grp, color) {
@@ -1295,15 +1296,23 @@ function renderConfirmationWeek() {
     showRateCard('&#x1F7E1; Conf - No Connect', src2.conf_no_answer, '#eab308') +
     showRateCard('&#x26AB; Not Confirmed', src2.not_confirmed, 'var(--muted)');
 
+  const hasTxt = txtTotal > 0;
   document.querySelector('#conf-rep-table thead').innerHTML = `<tr>
-    <th>Rep</th><th>Total</th><th>Answered</th><th>Not Answered</th><th>Connect Rate</th></tr>`;
+    <th>Rep</th><th>Conf Calls</th><th>Answered</th><th>Not Answered</th><th>Call Rate</th>
+    ${hasTxt ? '<th style="border-left:2px solid var(--accent)">📱 Texts</th><th>Responded</th><th>Text Rate</th>' : ''}</tr>`;
   document.querySelector('#conf-rep-table tbody').innerHTML = repData.map(r => {
     const cr = r.connect_rate >= 60 ? 'var(--green)' : r.connect_rate >= 40 ? 'var(--yellow)' : 'var(--red)';
+    const tr = txtRepMap[r.rep] || {};
+    const tTotal = tr.total || 0;
+    const tAns = tr.answered || 0;
+    const tRate = tr.connect_rate || (tTotal > 0 ? parseFloat((tAns/tTotal*100).toFixed(1)) : 0);
+    const tCr = tRate >= 60 ? 'var(--green)' : tRate >= 40 ? 'var(--yellow)' : 'var(--red)';
     return `<tr><td><strong>${r.rep}</strong></td><td>${r.total}</td>
       <td style="color:var(--green)">${r.answered}</td>
       <td style="color:var(--red)">${r.not_answered}</td>
-      <td>${barHtml(r.connect_rate)}</td></tr>`;
-  }).join('') || '<tr><td colspan="5" class="empty">No data</td></tr>';
+      <td>${barHtml(r.connect_rate)}</td>
+      ${hasTxt ? `<td style="border-left:2px solid var(--accent)">${tTotal || '—'}</td><td style="color:var(--green)">${tTotal > 0 ? tAns : '—'}</td><td>${tTotal > 0 ? barHtml(tRate) : '—'}</td>` : ''}</tr>`;
+  }).join('') || `<tr><td colspan="${hasTxt ? 8 : 5}" class="empty">No data</td></tr>`;
 
   const wkSection = document.getElementById('conf-week-section');
   if (!isAll) {
@@ -1501,7 +1510,6 @@ function rebuildAll() {
   buildCoverage();
   buildVmInbound();
   buildConfirmationCalls();
-  buildConfirmationTexts();
   buildBookingDuration();
   buildCallTimes();
   buildNumberDetail();
@@ -1516,7 +1524,6 @@ buildBookedRate();
 buildCoverage();
 buildVmInbound();
 buildConfirmationCalls();
-buildConfirmationTexts();
 buildBookingDuration();
 buildCallTimes();
 buildNumberDetail();
