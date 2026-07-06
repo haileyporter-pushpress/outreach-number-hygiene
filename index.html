@@ -679,35 +679,36 @@ function renderVmInbound() {
         <td>${r.inbound > 0 ? barHtml(r.inbound_rate) : '—'}</td>
       </tr>`).join('') : '<tr><td colspan="7" class="empty">No data</td></tr>';
 
-    // Weekly trend — combined: Week | Total Outbound | VMs | VM% | Inbound
+    // Weekly trend — per-rep VM columns + Total VMs + VM% + Total Inbound
     document.getElementById('vm-weekly-section').style.display = '';
     const vmWeekly = d.vm_weekly || [];
     const inbWeekly = d.inbound_weekly || [];
-    // Build week-keyed lookup for inbound
     const inbByWk = {};
     inbWeekly.forEach(w => { inbByWk[w.week] = w; });
-    // All weeks that have either vm or inbound data
     const trendWeeks = [...new Set([...vmWeekly.map(w=>w.week), ...inbWeekly.map(w=>w.week)])].sort();
-    document.querySelector('#vm-weekly-table thead').innerHTML = trendWeeks.length ? `<tr>
-      <th>Week</th><th>Outbound</th><th>VMs Left</th><th>VM %</th><th>Inbound</th>
-    </tr>` : '';
-    // Compute total outbound per week from week_data rep_stats
+    // All reps that appear in any vm_weekly entry
+    const vmRepCols = [...new Set(vmWeekly.flatMap(w => Object.keys(w.reps || {})))].sort();
     const wd = activeWeekData();
+    document.querySelector('#vm-weekly-table thead').innerHTML = trendWeeks.length ? `<tr>
+      <th>Week</th>
+      ${vmRepCols.map(r => `<th>${r} VMs</th>`).join('')}
+      <th>Total VMs</th><th>VM %</th><th>Inbound</th>
+    </tr>` : '';
     document.querySelector('#vm-weekly-table tbody').innerHTML = trendWeeks.map(week => {
       const vmW = vmWeekly.find(w => w.week === week) || {};
       const ibW = inbByWk[week] || {};
+      const vmRepsData = vmW.reps || {};
       const vmTotal = vmW.total || 0;
-      // outbound: sum from week rep_stats
       const wkRepStats = (wd[week] || {}).rep_stats || [];
       const outboundTotal = wkRepStats.reduce((s,r) => s + (r.total || 0), 0);
-      const vmPct = outboundTotal > 0 ? (vmTotal / outboundTotal * 100).toFixed(1) : '—';
+      const vmPct = outboundTotal > 0 ? (vmTotal / outboundTotal * 100).toFixed(1) + '%' : '—';
       const ibTotal = ibW.total || 0;
-      const humanLbl = (vmW.human || ibW.human || week);
+      const humanLbl = vmW.human || ibW.human || week;
       return `<tr>
         <td>${humanLbl} (${week})</td>
-        <td>${outboundTotal.toLocaleString()}</td>
-        <td>${vmTotal}</td>
-        <td>${vmPct !== '—' ? vmPct + '%' : '—'}</td>
+        ${vmRepCols.map(r => `<td>${vmRepsData[r] || 0}</td>`).join('')}
+        <td><strong>${vmTotal}</strong></td>
+        <td>${vmPct}</td>
         <td>${ibTotal}</td>
       </tr>`;
     }).join('');
