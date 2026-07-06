@@ -104,10 +104,10 @@
 <div class="tabs">
   <div class="tab active" onclick="showTab('this-week', this)">📅 This Week</div>
   <div class="tab" onclick="showTab('team-overview', this)">👥 Team Overview</div>
+  <div class="tab" onclick="showTab('confirmation-calls', this)">✅ Confirmation Calls</div>
   <div class="tab" onclick="showTab('booked-rate', this)">📈 Booked Rate</div>
   <div class="tab" onclick="showTab('coverage', this)">📋 Coverage</div>
   <div class="tab" onclick="showTab('vm-inbound', this)">📞 VM & Inbound</div>
-  <div class="tab" onclick="showTab('confirmation-calls', this)">✅ Confirmation Calls</div>
   <div class="tab" onclick="showTab('booking-duration', this)">⏱️ Booking Call Length</div>
   <div class="tab" onclick="showTab('call-times', this)">🕐 Call Times</div>
   <div class="tab" onclick="showTab('number-detail', this)">🔢 Number Detail</div>
@@ -892,18 +892,38 @@ function renderThisWeek() {
   const live = repData.reduce((s,r) => s + r.live, 0);
   const gk = repData.reduce((s,r) => s + r.gk, 0);
 
+  // Conf calls for this week
+  const confD = activeConfirmationData();
+  const confWk = (confD.by_week || []).find(w => w.week === wk) || {};
+  const confTotal = confWk.total || 0;
+  const confAns = confWk.answered || 0;
+  const confRepMap = {};
+  (confWk.by_rep || []).forEach(r => { confRepMap[r.rep] = r; });
+
+  // Texts for this week
+  const txtWk = ((confD.texts || {}).by_week || []).find(w => w.week === wk) || {};
+  const txtTotal = txtWk.total || 0;
+  const txtAns = txtWk.answered || 0;
+
+  const grandTotal = total + confTotal + txtTotal;
+
   document.getElementById('tw-stats-row').innerHTML = `
-    <div class="stat-card"><div class="label">Total Calls</div><div class="value">${total.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="label">Outbound Calls</div><div class="value">${total.toLocaleString()}</div><div class="sub">${grandTotal > total ? grandTotal.toLocaleString() + ' total incl. conf' : ''}</div></div>
     <div class="stat-card"><div class="label">Live Answers</div><div class="value" style="color:var(--green)">${live}</div><div class="sub">${total > 0 ? (live/total*100).toFixed(1) : 0}%</div></div>
     <div class="stat-card"><div class="label">Gatekeepers</div><div class="value" style="color:var(--yellow)">${gk}</div></div>
     <div class="stat-card"><div class="label">Live+GK Rate</div><div class="value">${total > 0 ? ((live+gk)/total*100).toFixed(1) : 0}%</div></div>
+    ${confTotal > 0 ? `<div class="stat-card"><div class="label">Conf Calls</div><div class="value" style="color:var(--accent)">${confTotal}</div><div class="sub">${confAns} answered (${confTotal > 0 ? (confAns/confTotal*100).toFixed(0) : 0}%)</div></div>` : ''}
+    ${txtTotal > 0 ? `<div class="stat-card"><div class="label">Conf Texts</div><div class="value" style="color:var(--accent)">${txtTotal}</div><div class="sub">${txtAns} answered (${txtTotal > 0 ? (txtAns/txtTotal*100).toFixed(0) : 0}%)</div></div>` : ''}
     <div class="stat-card"><div class="label">Retire Flags</div><div class="value" style="color:var(--red)">${retireData.length}</div></div>`;
 
   document.querySelector('#tw-rep-table thead').innerHTML = `<tr>
-    <th>Rep</th><th>Calls</th><th>Unique Leads</th><th>Calls/Lead</th><th>Live</th><th>GK</th><th>VM</th><th>No Answer</th><th>Live Rate</th><th>Live+GK Rate</th><th>Booked</th><th>Book % of Answered</th>
+    <th>Rep</th><th>Calls</th><th>Unique Leads</th><th>Calls/Lead</th><th>Live</th><th>GK</th><th>VM</th><th>No Answer</th><th>Live Rate</th><th>Live+GK Rate</th><th>Booked</th><th>Book % of Answered</th><th>Conf Calls</th>
   </tr>`;
-  document.querySelector('#tw-rep-table tbody').innerHTML = repData.length ? repData.map(r => `
-    <tr>
+  document.querySelector('#tw-rep-table tbody').innerHTML = repData.length ? repData.map(r => {
+    const cr = confRepMap[r.rep] || {};
+    const cTotal = cr.total || 0;
+    const cAns = cr.answered || 0;
+    return `<tr>
       <td><strong>${r.rep}</strong></td>
       <td>${r.total}</td>
       <td>${r.unique_leads !== undefined ? r.unique_leads : '—'}</td>
@@ -916,7 +936,9 @@ function renderThisWeek() {
       <td>${barHtml(r.combined_rate)}</td>
       <td>${r.booked !== undefined ? r.booked : '—'}</td>
       <td>${r.book_rate_of_answered !== undefined ? barHtml(r.book_rate_of_answered, 30) : '—'}</td>
-    </tr>`).join('') : '<tr><td colspan="12" class="empty">No data</td></tr>';
+      <td>${cTotal > 0 ? cTotal + ' (' + cAns + ' ans)' : '—'}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="13" class="empty">No data</td></tr>';
 
   document.querySelector('#tw-retire-table thead').innerHTML = `<tr>
     <th>Number</th><th>Calls</th><th>Live</th><th>GK</th><th>Live+GK Rate</th><th>Status</th><th>Reps</th>
