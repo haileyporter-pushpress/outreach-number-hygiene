@@ -679,52 +679,6 @@ function renderVmInbound() {
         <td>${r.inbound > 0 ? barHtml(r.inbound_rate) : '—'}</td>
       </tr>`).join('') : '<tr><td colspan="7" class="empty">No data</td></tr>';
 
-    // Weekly trend — per-rep VM cols + per-rep Inbound% cols + Totals
-    document.getElementById('vm-weekly-section').style.display = '';
-    const vmWeekly = d.vm_weekly || [];
-    const inbWeekly = d.inbound_weekly || [];
-    const inbByWk = {};
-    inbWeekly.forEach(w => { inbByWk[w.week] = w; });
-    const trendWeeks = [...new Set([...vmWeekly.map(w=>w.week), ...inbWeekly.map(w=>w.week)])].sort();
-    const vmRepCols = [...new Set(vmWeekly.flatMap(w => Object.keys(w.reps || {})))].sort();
-    const inbRepCols = [...new Set(inbWeekly.flatMap(w => Object.keys(w.reps || {})))].sort();
-    const wd = activeWeekData();
-    document.querySelector('#vm-weekly-table thead').innerHTML = trendWeeks.length ? `<tr>
-      <th>Week</th>
-      ${vmRepCols.map(r => `<th>${r} VMs</th>`).join('')}
-      <th>Total VMs</th><th>VM %</th>
-      ${inbRepCols.map(r => `<th>${r} Inb%</th>`).join('')}
-      <th>Total Inb</th><th>Inbound %</th>
-    </tr>` : '';
-    document.querySelector('#vm-weekly-table tbody').innerHTML = trendWeeks.map(week => {
-      const vmW = vmWeekly.find(w => w.week === week) || {};
-      const ibW = inbByWk[week] || {};
-      const vmRepsData = vmW.reps || {};
-      const ibRepsData = ibW.reps || {};
-      const vmTotal = vmW.total || 0;
-      const wkRepStats = (wd[week] || {}).rep_stats || [];
-      const outboundTotal = wkRepStats.reduce((s,r) => s + (r.total || 0), 0);
-      const vmPct = outboundTotal > 0 ? (vmTotal / outboundTotal * 100).toFixed(1) + '%' : '—';
-      const ibTotal = ibW.total || 0;
-      const ibConn = ibW.total_connected || 0;
-      const ibPct = ibTotal > 0 ? (ibConn / ibTotal * 100).toFixed(1) + '%' : '—';
-      const humanLbl = vmW.human || ibW.human || week;
-      return `<tr>
-        <td>${humanLbl} (${week})</td>
-        ${vmRepCols.map(r => `<td>${vmRepsData[r] || 0}</td>`).join('')}
-        <td><strong>${vmTotal}</strong></td>
-        <td>${vmPct}</td>
-        ${inbRepCols.map(r => {
-          const repInb = ibRepsData[r] || {};
-          const rt = repInb.total || 0;
-          const rc = repInb.connected || 0;
-          return `<td>${rt > 0 ? (rc/rt*100).toFixed(1)+'%' : '—'}</td>`;
-        }).join('')}
-        <td>${ibTotal}</td>
-        <td>${ibPct}</td>
-      </tr>`;
-    }).join('');
-
   } else {
     // ── Week-specific view ────────────────────────────────────────
     const vmW  = (d.vm_weekly || []).find(w => w.week === wk) || {};
@@ -747,7 +701,7 @@ function renderVmInbound() {
 
     document.getElementById('vm-section-title').textContent = `VM & Inbound by Rep — ${humanLabel}`;
 
-    // Build per-rep combined table — inbW.reps is now {total, connected} objects
+    // Per-rep combined table (matches All Time columns)
     const wkVmReps = vmW.reps || {};
     const wkInbReps = inbW.reps || {};
     const wkAllReps = [...new Set([...Object.keys(wkVmReps), ...Object.keys(wkInbReps)])].sort();
@@ -755,7 +709,7 @@ function renderVmInbound() {
     wkRepStats.forEach(r => { wkRepOutbound[r.rep] = r.total; });
 
     document.querySelector('#vm-rep-combined-table thead').innerHTML = `<tr>
-      <th>Rep</th><th>Outbound</th><th>VMs Left</th><th>VM %</th><th>Inbound</th><th>Inbound %</th>
+      <th>Rep</th><th>Outbound</th><th>VMs Left</th><th>VM %</th><th>Inbound</th><th>Inbound Connected</th><th>Inbound Rate</th>
     </tr>`;
     document.querySelector('#vm-rep-combined-table tbody').innerHTML = wkAllReps.length ? wkAllReps.map(rep => {
       const vms = wkVmReps[rep] || 0;
@@ -764,18 +718,66 @@ function renderVmInbound() {
       const inbConn = inbObj.connected || 0;
       const out = wkRepOutbound[rep] || 0;
       const vmPct = out > 0 ? (vms / out * 100).toFixed(1) + '%' : '—';
-      const inbPct = inbTotal > 0 ? (inbConn / inbTotal * 100).toFixed(1) + '%' : '—';
+      const inbRate = inbTotal > 0 ? (inbConn / inbTotal * 100).toFixed(1) + '%' : '—';
       return `<tr>
         <td><strong>${rep}</strong></td>
         <td>${out}</td>
         <td>${vms}</td>
         <td>${vmPct}</td>
         <td>${inbTotal}</td>
-        <td>${inbPct}</td>
+        <td>${inbConn}</td>
+        <td>${inbRate}</td>
       </tr>`;
-    }).join('') : '<tr><td colspan="6" class="empty">No data for this week</td></tr>';
+    }).join('') : '<tr><td colspan="7" class="empty">No data for this week</td></tr>';
+  }
 
-    document.getElementById('vm-weekly-section').style.display = 'none';
+  // ── Weekly trend table — always built + shown ─────────────────────
+  {
+    const vmWeekly = d.vm_weekly || [];
+    const inbWeekly = d.inbound_weekly || [];
+    const inbByWk = {};
+    inbWeekly.forEach(w => { inbByWk[w.week] = w; });
+    const trendWeeks = [...new Set([...vmWeekly.map(w=>w.week), ...inbWeekly.map(w=>w.week)])].sort();
+    const vmRepCols = [...new Set(vmWeekly.flatMap(w => Object.keys(w.reps || {})))].sort();
+    const inbRepCols = [...new Set(inbWeekly.flatMap(w => Object.keys(w.reps || {})))].sort();
+    const wd2 = activeWeekData();
+    document.getElementById('vm-weekly-section').style.display = '';
+    document.querySelector('#vm-weekly-table thead').innerHTML = trendWeeks.length ? `<tr>
+      <th>Week</th>
+      ${vmRepCols.map(r => `<th>${r} VMs</th>`).join('')}
+      <th>Total VMs</th><th>VM %</th>
+      ${inbRepCols.map(r => `<th>${r} Inb%</th>`).join('')}
+      <th>Total Inb</th><th>Inbound %</th>
+    </tr>` : '';
+    document.querySelector('#vm-weekly-table tbody').innerHTML = trendWeeks.map(week => {
+      const vmW2 = vmWeekly.find(w => w.week === week) || {};
+      const ibW2 = inbByWk[week] || {};
+      const vmRepsData = vmW2.reps || {};
+      const ibRepsData = ibW2.reps || {};
+      const vmTotal = vmW2.total || 0;
+      const wkRepStats2 = (wd2[week] || {}).rep_stats || [];
+      const outboundTotal = wkRepStats2.reduce((s,r) => s + (r.total || 0), 0);
+      const vmPct = outboundTotal > 0 ? (vmTotal / outboundTotal * 100).toFixed(1) + '%' : '—';
+      const ibTotal = ibW2.total || 0;
+      const ibConn = ibW2.total_connected || 0;
+      const ibPct = ibTotal > 0 ? (ibConn / ibTotal * 100).toFixed(1) + '%' : '—';
+      const humanLbl = vmW2.human || ibW2.human || week;
+      const isSelected = (wk !== 'all' && week === wk) ? ' style="background:var(--highlight,rgba(99,102,241,0.12));font-weight:600"' : '';
+      return `<tr${isSelected}>
+        <td>${humanLbl} (${week})</td>
+        ${vmRepCols.map(r => `<td>${vmRepsData[r] || 0}</td>`).join('')}
+        <td><strong>${vmTotal}</strong></td>
+        <td>${vmPct}</td>
+        ${inbRepCols.map(r => {
+          const repInb = ibRepsData[r] || {};
+          const rt = repInb.total || 0;
+          const rc = repInb.connected || 0;
+          return `<td>${rt > 0 ? (rc/rt*100).toFixed(1)+'%' : '—'}</td>`;
+        }).join('')}
+        <td>${ibTotal}</td>
+        <td>${ibPct}</td>
+      </tr>`;
+    }).join('');
   }
 }
 
