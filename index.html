@@ -731,8 +731,8 @@ function renderVmInbound() {
     }).join('') : '<tr><td colspan="7" class="empty">No data for this week</td></tr>';
   }
 
-  // ── Weekly trend table — always built + shown ─────────────────────
-  {
+  // ── Weekly trend table — only shown for All Weeks ────────────────
+  if (wk === 'all') {
     const vmWeekly = d.vm_weekly || [];
     const inbWeekly = d.inbound_weekly || [];
     const inbByWk = {};
@@ -757,27 +757,29 @@ function renderVmInbound() {
       const vmTotal = vmW2.total || 0;
       const wkRepStats2 = (wd2[week] || {}).rep_stats || [];
       const outboundTotal = wkRepStats2.reduce((s,r) => s + (r.total || 0), 0);
-      const vmPct = outboundTotal > 0 ? (vmTotal / outboundTotal * 100).toFixed(1) + '%' : '—';
+      const vmPctVal = outboundTotal > 0 ? (vmTotal / outboundTotal * 100) : null;
       const ibTotal = ibW2.total || 0;
       const ibConn = ibW2.total_connected || 0;
-      const ibPct = ibTotal > 0 ? (ibConn / ibTotal * 100).toFixed(1) + '%' : '—';
+      const ibPctVal = ibTotal > 0 ? (ibConn / ibTotal * 100) : null;
       const humanLbl = vmW2.human || ibW2.human || week;
-      const isSelected = (wk !== 'all' && week === wk) ? ' style="background:var(--highlight,rgba(99,102,241,0.12));font-weight:600"' : '';
-      return `<tr${isSelected}>
+      return `<tr>
         <td>${humanLbl} (${week})</td>
         ${vmRepCols.map(r => `<td>${vmRepsData[r] || 0}</td>`).join('')}
         <td><strong>${vmTotal}</strong></td>
-        <td>${vmPct}</td>
+        <td>${vmPctVal !== null ? barHtml(vmPctVal, 30) : '—'}</td>
         ${inbRepCols.map(r => {
           const repInb = ibRepsData[r] || {};
           const rt = repInb.total || 0;
           const rc = repInb.connected || 0;
-          return `<td>${rt > 0 ? (rc/rt*100).toFixed(1)+'%' : '—'}</td>`;
+          const pct = rt > 0 ? (rc/rt*100) : null;
+          return `<td>${pct !== null ? barHtml(pct) : '—'}</td>`;
         }).join('')}
         <td>${ibTotal}</td>
-        <td>${ibPct}</td>
+        <td>${ibPctVal !== null ? barHtml(ibPctVal) : '—'}</td>
       </tr>`;
     }).join('');
+  } else {
+    document.getElementById('vm-weekly-section').style.display = 'none';
   }
 }
 
