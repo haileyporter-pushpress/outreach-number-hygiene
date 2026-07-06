@@ -1271,12 +1271,17 @@ function renderConfirmationWeek() {
 
   const crColor = statsData.connect_rate >= 60 ? 'var(--green)' : statsData.connect_rate >= 40 ? 'var(--yellow)' : 'var(--red)';
   const txtCrColor = txtRate >= 60 ? 'var(--green)' : txtRate >= 40 ? 'var(--yellow)' : 'var(--red)';
+  const combinedTotal = statsData.total + txtTotal;
+  const combinedAns = statsData.answered + txtAns;
+  const combinedRate = combinedTotal > 0 ? parseFloat((combinedAns / combinedTotal * 100).toFixed(1)) : 0;
+  const combinedColor = combinedRate >= 60 ? 'var(--green)' : combinedRate >= 40 ? 'var(--yellow)' : 'var(--red)';
   document.getElementById('conf-stats-row').innerHTML = `
     <div class="stat-card"><div class="label">Conf Calls</div><div class="value">${statsData.total.toLocaleString()}</div><div class="sub">${statsData.answered} answered</div></div>
     <div class="stat-card"><div class="label">Call Connect Rate</div><div class="value" style="color:${crColor}">${statsData.connect_rate}%</div></div>
     ${txtTotal > 0 ? `
     <div class="stat-card" style="border-left:3px solid var(--accent)"><div class="label">📱 Conf Texts</div><div class="value">${txtTotal.toLocaleString()}</div><div class="sub">${txtAns} answered</div></div>
-    <div class="stat-card" style="border-left:3px solid var(--accent)"><div class="label">Text Response Rate</div><div class="value" style="color:${txtCrColor}">${txtRate}%</div></div>` : ''}
+    <div class="stat-card" style="border-left:3px solid var(--accent)"><div class="label">Text Response Rate</div><div class="value" style="color:${txtCrColor}">${txtRate}%</div></div>
+    <div class="stat-card" style="border-left:3px solid var(--green)"><div class="label">📊 Combined Rate</div><div class="value" style="color:${combinedColor}">${combinedRate}%</div><div class="sub">${combinedAns} of ${combinedTotal} touches</div></div>` : ''}
     <div class="stat-card"><div class="label">Not Answered (calls)</div><div class="value" style="color:var(--red)">${statsData.not_answered}</div></div>`;
 
   const src2 = isAll ? (d.show_rate_comparison || {}) : (entry ? (entry.show_rate_comparison || {}) : {});
