@@ -89,6 +89,22 @@
 </head>
 <body>
 
+<div id="auth-overlay" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:40px 48px;width:360px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.08);">
+    <div style="font-size:28px;margin-bottom:8px;">🔒</div>
+    <h2 style="font-size:18px;font-weight:700;margin-bottom:4px;">Outreach Dashboard</h2>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:24px;">PushPress internal — enter password to continue</p>
+    <input id="auth-input" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')checkAuth()"
+      style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-size:14px;outline:none;margin-bottom:12px;background:var(--bg);color:var(--text);">
+    <div id="auth-error" style="display:none;color:var(--red);font-size:12px;margin-bottom:12px;">Incorrect password. Try again.</div>
+    <button onclick="checkAuth()"
+      style="width:100%;padding:10px;background:var(--accent);color:white;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;">
+      Sign In
+    </button>
+  </div>
+</div>
+
+<div id="main-content" style="display:none;">
 <div class="header">
   <div>
     <h1>Outreach Intelligence Dashboard</h1>
@@ -1536,6 +1552,39 @@ buildCallTimes();
 buildNumberDetail();
 buildCrossRep();
 buildRetireList();
+// ── Auth gate ─────────────────────────────────────────────
+const AUTH_KEY = 'pp_dash_auth';
+const CORRECT  = 'PP2026Calls';
+
+function checkAuth() {
+  const val = document.getElementById('auth-input').value;
+  if (val === CORRECT) {
+    sessionStorage.setItem(AUTH_KEY, '1');
+    showDashboard();
+  } else {
+    document.getElementById('auth-error').style.display = 'block';
+    document.getElementById('auth-input').value = '';
+    document.getElementById('auth-input').focus();
+  }
+}
+
+function showDashboard() {
+  document.getElementById('auth-overlay').style.display = 'none';
+  document.getElementById('main-content').style.display = 'block';
+  // trigger first render
+  showTab('this-week', document.querySelector('.tab'));
+  renderThisWeek();
+}
+
+(function init() {
+  if (sessionStorage.getItem(AUTH_KEY) === '1') {
+    showDashboard();
+  } else {
+    document.getElementById('auth-overlay').style.display = 'flex';
+    setTimeout(() => document.getElementById('auth-input').focus(), 50);
+  }
+})();
 </script>
+</div><!-- /main-content -->
 </body>
 </html>
